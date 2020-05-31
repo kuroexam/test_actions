@@ -1,20 +1,35 @@
-TARGET ?= a.out
-SRC_DIRS ?= ./src
- 
-SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name *.c -or -name *.s)
-OBJS := $(addsuffix .o,$(basename $(SRCS)))
-DEPS := $(OBJS:.o=.d)
- 
-INC_DIRS := $(shell find $(SRC_DIRS) -type d)
-INC_FLAGS := $(addprefix -I,$(INC_DIRS))
- 
-CPPFLAGS ?= $(INC_FLAGS) -MMD -MP
- 
-$(TARGET): $(OBJS)
-    $(CC) $(LDFLAGS) $(OBJS) -o $@ $(LOADLIBES) $(LDLIBS)
- 
-.PHONY: clean
+COMPILER  = g++
+CFLAGS    = -g -MMD -MP -Wall -Wextra -Winit-self -Wno-missing-field-initializers
+ifeq "$(shell getconf LONG_BIT)" "64"
+  LDFLAGS =
+else
+  LDFLAGS =
+endif
+LIBS      =
+INCLUDE   = -I./include
+TARGET    = ./bin/$(shell basename `readlink -f .`)
+SRCDIR    = ./source
+ifeq "$(strip $(SRCDIR))" ""
+  SRCDIR  = .
+endif
+SOURCES   = $(wildcard $(SRCDIR)/*.cpp)
+OBJDIR    = ./obj
+ifeq "$(strip $(OBJDIR))" ""
+  OBJDIR  = .
+endif
+OBJECTS   = $(addprefix $(OBJDIR)/, $(notdir $(SOURCES:.cpp=.o)))
+DEPENDS   = $(OBJECTS:.o=.d)
+
+$(TARGET): $(OBJECTS) $(LIBS)
+	$(COMPILER) -o $@ $^ $(LDFLAGS)
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	-mkdir -p $(OBJDIR)
+	$(COMPILER) $(CFLAGS) $(INCLUDE) -o $@ -c $<
+
+all: clean $(TARGET)
+
 clean:
-    $(RM) $(TARGET) $(OBJS) $(DEPS)
- 
--include $(DEPS)
+	-rm -f $(OBJECTS) $(DEPENDS) $(TARGET)
+
+-include $(DEPENDS)
